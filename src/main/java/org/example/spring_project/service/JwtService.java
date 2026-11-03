@@ -1,50 +1,44 @@
-package org.example.spring_project.security;
+package org.example.spring_project.service;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.example.spring_project.lib.EnvLoader;
+import org.springframework.stereotype.Service;
 
-import java.io.IOException;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.UUID;
 
-@Component
-public class JwtFilter extends OncePerRequestFilter {
+@Service
+public class JwtService {
 
-    private final JwtFilter jwtFilter;
+    private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor(
+            EnvLoader.get("JWT_SECRET").getBytes(StandardCharsets.UTF_8)
+    );
+    private static final long EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24h
 
-    public JwtFilter(JwtFilter jwtFilter) {
-        this.jwtFilter = jwtFilter;
+    public static String generateToken(UUID userId, String login, String role, String lastname, String firstname, String middlename, String tenantId) {
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("login", login)
+                .claim("role", role)
+                .claim("lastname", lastname)
+                .claim("firstname", firstname)
+                .claim("middlename", middlename)
+                .claim("tenantId", tenantId)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
+                .signWith(SECRET_KEY)
+                .compact();
     }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-
-        String path = request.getRequestURI();
-        if (path.equals("/api/auth/login") || path.equals("/api/auth/register")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-
-        String token = authHeader.substring(7);
-        try {
-            // Валидация токена и получение данных
-            var claims = jwtService.verifyToken(token);
-            request.setAttribute("userId", claims.getSubject());
-            request.setAttribute("role", claims.get("role"));
-            request.setAttribute("tenantId", claims.get("tenantId"));
-
-            filterChain.doFilter(request, response);
-        } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        }
+    public static Claims verifyToken(String token) {
+        return Jwts.parser()
+                .verifyWith(SECRET_KEY)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

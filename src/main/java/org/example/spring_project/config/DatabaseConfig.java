@@ -5,11 +5,11 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
 @Component
-public class DatabaseInitializer implements CommandLineRunner {
+public class DatabaseConfig implements CommandLineRunner {
 
     private final JdbcClient jdbcClient;
 
-    public DatabaseInitializer(JdbcClient jdbcClient) {
+    public DatabaseConfig(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
     }
 
