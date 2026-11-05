@@ -2,6 +2,7 @@ package org.example.spring_project.controller.user;
 
 import org.example.spring_project.model.User;
 import org.example.spring_project.repository.UserRepository;
+import org.example.spring_project.mapper.ApiMapper;
 import org.example.spring_project.security.PasswordFilter;
 import org.example.spring_project.middleware.ResponseMiddleware;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,9 +19,11 @@ import java.util.UUID;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final ApiMapper apiMapper;
 
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, ApiMapper apiMapper) {
         this.userRepository = userRepository;
+        this.apiMapper = apiMapper;
     }
 
     @GetMapping
@@ -30,16 +33,16 @@ public class UserController {
 
         if (userIdAttr == null) return ResponseMiddleware.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
 
+        List<User> users;
         if ("ADMIN".equals(userRole)) {
-            return ResponseMiddleware.success(userRepository.findAll());
+            users = userRepository.findAll();
         } else {
             User currentUser = userRepository.findById(UUID.fromString(userIdAttr));
             String tenantId = currentUser != null ? currentUser.getTenantId() : null;
-            if (tenantId != null) {
-                return ResponseMiddleware.success(userRepository.findAllByTenantId(tenantId));
-            }
-            return ResponseMiddleware.success(List.of());
+            users = (tenantId != null) ? userRepository.findAllByTenantId(tenantId) : List.of();
         }
+
+        return ResponseMiddleware.success(apiMapper.toUserDTOList(users));
     }
 
     @GetMapping("/{id}")
@@ -61,7 +64,7 @@ public class UserController {
             return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied: You can only view your own profile");
         }
 
-        return ResponseMiddleware.success(user);
+        return ResponseMiddleware.success(apiMapper.toUserDTO(user));
     }
 
     @PutMapping("/{id}")
@@ -107,7 +110,7 @@ public class UserController {
         }
 
         userRepository.update(existingUser);
-        return ResponseMiddleware.successMessage("User updated successfully", existingUser);
+        return ResponseMiddleware.successMessage("User updated successfully", apiMapper.toUserDTO(existingUser));
     }
 
     @DeleteMapping("/{id}")
@@ -126,10 +129,7 @@ public class UserController {
         User user = userRepository.findById(UUID.fromString(id));
         if (user == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "User not found");
 
-        // В твоем UserRepository не было метода delete, но он нужен.
-        // Мы можем сделать это прямо здесь или добавить в репозиторий.
-        // Добавь метод delete(UUID id) в UserRepository
-        // userRepository.delete(UUID.fromString(id));
+        userRepository.delete(UUID.fromString(id)); // Теперь метод существует
 
         return ResponseMiddleware.successMessage("User deleted successfully", null);
     }

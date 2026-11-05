@@ -8,7 +8,6 @@ public class Tenant {
     private String description;
 
     public Tenant(String name, String description) {
-        this.id = UUID.randomUUID().toString();
         this.name = name;
         this.description = description;
     }

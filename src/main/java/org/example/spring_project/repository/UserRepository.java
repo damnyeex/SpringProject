@@ -95,4 +95,10 @@ public class UserRepository {
                 .optional()
                 .orElse(null);
     }
+
+    public void delete(UUID id) {
+        jdbcClient.sql("DELETE FROM users WHERE id = :id")
+                .param("id", id)
+                .update();
+    }
 }

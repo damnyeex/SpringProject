@@ -3,6 +3,7 @@ package org.example.spring_project.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import org.example.spring_project.model.User;
 import org.example.spring_project.repository.UserRepository;
+import org.example.spring_project.mapper.ApiMapper;
 import org.example.spring_project.service.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +20,12 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final ApiMapper apiMapper;
 
-    public AuthController(UserRepository userRepository, JwtService jwtService) {
+    public AuthController(UserRepository userRepository, JwtService jwtService, ApiMapper apiMapper) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.apiMapper = apiMapper;
     }
 
     @PostMapping("/register")
@@ -53,16 +56,7 @@ public class AuthController {
 
         userRepository.create(newUser, password);
 
-        Map<String, Object> userMap = new HashMap<>();
-        userMap.put("id", newUser.getId());
-        userMap.put("login", newUser.getLogin());
-        userMap.put("role", newUser.getRole());
-        userMap.put("lastname", newUser.getLastname());
-        userMap.put("firstname", newUser.getFirstname());
-        userMap.put("middlename", newUser.getMiddlename());
-        userMap.put("tenantId", newUser.getTenantId());
-
-        return ResponseMiddleware.created("User registered successfully", userMap);
+        return ResponseMiddleware.created("User registered successfully", apiMapper.toUserDTO(newUser));
     }
 
     @GetMapping("/check")
@@ -81,17 +75,12 @@ public class AuthController {
 
         String newToken = jwtService.generateToken(UUID.fromString(userId), login, role, lastname, firstname, middlename, tenantId);
 
-        Map<String, Object> userMap = new HashMap<>();
-        userMap.put("id", userId);
-        userMap.put("login", login);
-        userMap.put("role", role);
-        userMap.put("lastname", lastname);
-        userMap.put("firstname", firstname);
-        userMap.put("middlename", middlename);
+        User tokenUser = new User(login, null, role, tenantId, lastname, firstname, middlename);
+        tokenUser.setId(userId);
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", newToken);
-        response.put("user", userMap);
+        response.put("user", apiMapper.toUserDTO(tokenUser));
 
         return ResponseMiddleware.success(response);
     }

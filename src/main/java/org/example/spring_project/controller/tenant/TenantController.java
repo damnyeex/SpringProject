@@ -1,8 +1,11 @@
 package org.example.spring_project.controller.tenant;
 
+import org.example.spring_project.dto.TenantDTO;
+import org.example.spring_project.dto.TenantDetailDTO;
 import org.example.spring_project.model.Tenant;
 import org.example.spring_project.model.User;
 import org.example.spring_project.repository.TenantRepository;
+import org.example.spring_project.mapper.ApiMapper;
 import org.example.spring_project.middleware.ResponseMiddleware;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -10,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,9 +22,11 @@ import java.util.UUID;
 public class TenantController {
 
     private final TenantRepository tenantRepository;
+    private final ApiMapper apiMapper;
 
-    public TenantController(TenantRepository tenantRepository) {
+    public TenantController(TenantRepository tenantRepository, ApiMapper apiMapper) {
         this.tenantRepository = tenantRepository;
+        this.apiMapper = apiMapper;
     }
 
     @GetMapping
@@ -30,15 +34,13 @@ public class TenantController {
         if (request.getAttribute("userId") == null) return ResponseMiddleware.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
 
         List<Tenant> tenants = tenantRepository.findAll();
-        List<Map<String, Object>> responseList = new ArrayList<>();
+        List<TenantDTO> responseList = new ArrayList<>();
+
         for (Tenant tenant : tenants) {
-            Map<String, Object> tenantInfo = new HashMap<>();
-            tenantInfo.put("id", tenant.getId());
-            tenantInfo.put("name", tenant.getName());
-            tenantInfo.put("description", tenant.getDescription());
-            tenantInfo.put("userCount", tenantRepository.getUserCount(tenant.getId()));
-            responseList.add(tenantInfo);
+            int userCount = tenantRepository.getUserCount(tenant.getId());
+            responseList.add(apiMapper.toTenantDTO(tenant, userCount));
         }
+
         return ResponseMiddleware.success(responseList);
     }
 
@@ -51,14 +53,9 @@ public class TenantController {
 
         List<User> users = tenantRepository.getUsersByTenantId(id);
 
-        Map<String, Object> responseData = new HashMap<>();
-        responseData.put("id", tenant.getId());
-        responseData.put("name", tenant.getName());
-        responseData.put("description", tenant.getDescription());
-        responseData.put("userCount", users.size());
-        responseData.put("users", users);
+        TenantDetailDTO detailDTO = apiMapper.toTenantDetailDTO(tenant, users);
 
-        return ResponseMiddleware.success(responseData);
+        return ResponseMiddleware.success(detailDTO);
     }
 
     @PostMapping
@@ -76,7 +73,7 @@ public class TenantController {
         newTenant.setId(UUID.randomUUID().toString());
         tenantRepository.create(newTenant);
 
-        return ResponseMiddleware.created("Tenant created successfully", newTenant);
+        return ResponseMiddleware.created("Tenant created successfully", apiMapper.toTenantDTO(newTenant, 0));
     }
 
     @PutMapping("/{id}")
@@ -95,7 +92,9 @@ public class TenantController {
         if (description != null) existingTenant.setDescription(description);
 
         tenantRepository.update(existingTenant);
-        return ResponseMiddleware.successMessage("Tenant updated successfully", existingTenant);
+
+        int userCount = tenantRepository.getUserCount(id);
+        return ResponseMiddleware.successMessage("Tenant updated successfully", apiMapper.toTenantDTO(existingTenant, userCount));
     }
 
     @DeleteMapping("/{id}")

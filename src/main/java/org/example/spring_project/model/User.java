@@ -15,8 +15,8 @@ public class User {
         this.password = password;
         this.role = role;
         this.tenantId = tenantId;
-        this.firstname = lastname;
-        this.lastname = firstname;
+        this.firstname = firstname;
+        this.lastname = lastname;
         this.middlename = middlename;
     }
 
