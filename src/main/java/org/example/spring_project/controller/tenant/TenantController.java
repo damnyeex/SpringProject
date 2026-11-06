@@ -61,7 +61,7 @@ public class TenantController {
     @PostMapping
     public ResponseEntity<?> createTenant(@RequestBody Map<String, String> body, HttpServletRequest request) {
         if (!"ADMIN".equals(request.getAttribute("role"))) {
-            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied: Only administrators can create tenants");
+            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied");
         }
 
         String name = body.get("name");
@@ -69,7 +69,11 @@ public class TenantController {
             return ResponseMiddleware.error(HttpStatus.BAD_REQUEST, "Tenant name is required");
         }
 
-        Tenant newTenant = new Tenant(name, body.get("description"));
+        if (tenantRepository.findByName(name.trim()) != null) {
+            return ResponseMiddleware.error(HttpStatus.CONFLICT, "Tenant with this name already exists");
+        }
+
+        Tenant newTenant = new Tenant(name.trim(), body.get("description"));
         newTenant.setId(UUID.randomUUID().toString());
         tenantRepository.create(newTenant);
 
@@ -79,22 +83,28 @@ public class TenantController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTenant(@PathVariable String id, @RequestBody Map<String, String> body, HttpServletRequest request) {
         if (!"ADMIN".equals(request.getAttribute("role"))) {
-            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied: Only administrators can update tenants");
+            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied");
         }
 
-        Tenant existingTenant = tenantRepository.findById(id);
-        if (existingTenant == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "Tenant not found");
+        Tenant existing = tenantRepository.findById(id);
+        if (existing == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "Tenant not found");
 
         String name = body.get("name");
         String description = body.get("description");
 
-        if (name != null && !name.trim().isEmpty()) existingTenant.setName(name);
-        if (description != null) existingTenant.setDescription(description);
+        if (name != null && !name.trim().isEmpty()) {
+            Tenant byName = tenantRepository.findByName(name.trim());
+            if (byName != null && !byName.getId().equals(id)) {
+                return ResponseMiddleware.error(HttpStatus.CONFLICT, "Tenant with this name already exists");
+            }
+            existing.setName(name.trim());
+        }
 
-        tenantRepository.update(existingTenant);
+        if (description != null) existing.setDescription(description);
 
+        tenantRepository.update(existing);
         int userCount = tenantRepository.getUserCount(id);
-        return ResponseMiddleware.successMessage("Tenant updated successfully", apiMapper.toTenantDTO(existingTenant, userCount));
+        return ResponseMiddleware.successMessage("Tenant updated successfully", apiMapper.toTenantDTO(existing, userCount));
     }
 
     @DeleteMapping("/{id}")

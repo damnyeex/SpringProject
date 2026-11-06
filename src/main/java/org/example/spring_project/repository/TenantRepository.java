@@ -70,7 +70,14 @@ public class TenantRepository {
     }
 
     public List<User> getUsersByTenantId(String tenantId) {
-        // Твоя исходная логика: вызов метода из UserRepository
         return userRepository.findAllByTenantId(tenantId);
+    }
+
+    public Tenant findByName(String name) {
+        return jdbcClient.sql("SELECT id, name, description FROM tenants WHERE name = :name")
+                .param("name", name)
+                .query(TENANT_ROW_MAPPER)
+                .optional()
+                .orElse(null);
     }
 }
