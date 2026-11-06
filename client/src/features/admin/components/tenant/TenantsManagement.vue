@@ -93,17 +93,14 @@ import Icon from "@/shared/ui/Icon/Icon.vue";
 import BaseInput from "@/shared/ui/BaseInput.vue";
 import BaseButton from "@/shared/ui/Button/BaseButton.vue";
 import BackButton from "@/shared/ui/Button/BackButton.vue";
-import {
-    getAllTenants,
-    createTenant,
-    deleteTenant,
-} from "@/features/admin/api";
-
+import { createTenant, deleteTenant } from "@/features/admin/api";
+import { useTenants } from "@/shared/composables/useTenants";
 import TenantUpdateForm from "./TenantUpdateForm.vue";
 
 const emit = defineEmits(["back", "tenant-changed"]);
 
-const tenants = ref([]);
+const { tenants, loadTenants } = useTenants();
+
 const tenantsLoading = ref(false);
 const isCreatingTenant = ref(false);
 const editingTenant = ref(false);
@@ -115,15 +112,10 @@ const newTenant = ref({
     description: "",
 });
 
-const loadTenants = async () => {
+const refreshTenants = async () => {
     tenantsLoading.value = true;
     try {
-        const response = await getAllTenants();
-        if (response.success) {
-            tenants.value = response.data;
-        }
-    } catch (error) {
-        console.error("Failed to load tenants:", error);
+        await loadTenants(true);
     } finally {
         tenantsLoading.value = false;
     }
@@ -140,21 +132,23 @@ const handleCreateTenant = async () => {
         });
         if (response.success) {
             newTenant.value = { name: "", description: "" };
-            await loadTenants();
+            await refreshTenants();
             emit("tenant-changed");
+        } else {
+            alert(response.error || "Ошибка при создании отдела");
         }
     } catch (error) {
         console.error("Failed to create tenant:", error);
-        alert("Ошибка при создании отдела");
+        alert(error.response?.data?.error || "Ошибка при создании отдела");
     } finally {
         isCreatingTenant.value = false;
     }
 };
 
-const openEditTenant = (tenant) => {
+const openEditTenant = (t) => {
     editingTenant.value = true;
-    editingTenantId.value = tenant.id;
-    editingTenantData.value = { ...tenant };
+    editingTenantId.value = t.id;
+    editingTenantData.value = { ...t };
 };
 
 const cancelEditTenant = () => {
@@ -167,7 +161,7 @@ const onTenantUpdated = async () => {
     editingTenant.value = false;
     editingTenantId.value = "";
     editingTenantData.value = {};
-    await loadTenants();
+    await refreshTenants();
     emit("tenant-changed");
 };
 
@@ -195,7 +189,7 @@ const deleteTenantHandler = async (tenantId) => {
 };
 
 onMounted(() => {
-    loadTenants();
+    refreshTenants();
 });
 </script>
 

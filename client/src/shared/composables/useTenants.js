@@ -28,16 +28,22 @@ export function useTenants() {
         return loadingPromise;
     };
 
+    const invalidate = () => {
+        tenants.value = null;
+        tenant.value = null;
+    };
+
     const getTenantName = (tenantId) => {
-        if (!tenantId) return "—";
-        if (!tenants.value) return "—";
-        const tenant = tenants.value.find((t) => t.id === tenantId);
-        return tenant ? tenant.name : "—";
+        if (!tenantId || !tenants.value) return "—";
+        const found = tenants.value.find((t) => t.id === tenantId);
+        return found ? found.name : "—";
     };
 
     return {
         tenants,
+        tenant,
         loadTenants,
+        invalidate,
         getTenantName,
     };
 }
