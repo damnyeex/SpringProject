@@ -1,8 +1,11 @@
 package org.example.spring_project.config;
 
+import org.example.spring_project.security.PasswordFilter;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 @Component
 public class DatabaseConfig implements CommandLineRunner {
@@ -14,7 +17,7 @@ public class DatabaseConfig implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         System.out.println("=== Initializing Database ===");
 
         // Создание таблиц
@@ -39,17 +42,22 @@ public class DatabaseConfig implements CommandLineRunner {
             )
         """).update();
 
-        // Создание админа, если его нет
-        var count = jdbcClient.sql("SELECT COUNT(*) FROM users WHERE login = 'admin'")
+
+        Integer count = jdbcClient.sql("SELECT COUNT(*) FROM users WHERE login = 'admin'")
                 .query(Integer.class)
                 .single();
 
         if (count == 0) {
-            String hash = org.mindrot.jbcrypt.BCrypt.hashpw("admin123", org.mindrot.jbcrypt.BCrypt.gensalt());
-            jdbcClient.sql("INSERT INTO users (id, login, password, role) VALUES (gen_random_uuid(), 'admin', :pass, 'ADMIN')")
+
+            String hash = PasswordFilter.hash("admin123");
+            UUID adminId = UUID.randomUUID();
+
+            jdbcClient.sql("INSERT INTO users (id, login, password, role) VALUES (:id, 'admin', :pass, 'ADMIN')")
+                    .param("id", adminId)
                     .param("pass", hash)
                     .update();
-            System.out.println("Default admin created!");
+
+            System.out.println("Default admin created with ID: " + adminId);
         } else {
             System.out.println("Admin already exists.");
         }
