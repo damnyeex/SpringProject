@@ -63,11 +63,10 @@
                                 variant="danger"
                                 size="small"
                                 @click="deleteTenantHandler(tenant.id)"
-                                :disabled="tenant.userCount > 0"
                                 :title="
                                     tenant.userCount > 0
-                                        ? 'Нельзя удалить отдел с пользователями'
-                                        : ''
+                                        ? 'Нельзя удалить: в отделе ${tenant.userCount} пользователей'
+                                        : 'Удалить отдел'
                                 "
                             >
                                 Удалить
@@ -166,20 +165,17 @@ const onTenantUpdated = async () => {
 };
 
 const deleteTenantHandler = async (tenantId) => {
-    const tenant = tenants.value.find((t) => t.id === tenantId);
-    if (tenant.userCount > 0) {
-        alert(
-            "Нельзя удалить отдел, в котором есть пользователи. Сначала переместите или удалите пользователей.",
-        );
+    const t = tenants.value?.find((x) => x.id === tenantId);
+    if (t?.userCount > 0) {
+        alert("Нельзя удалить отдел, в котором есть пользователи.");
         return;
     }
-
     if (!confirm("Вы уверены, что хотите удалить этот отдел?")) return;
 
     try {
         const response = await deleteTenant(tenantId);
         if (response.success) {
-            await loadTenants();
+            await refreshTenants();
             emit("tenant-changed");
         }
     } catch (error) {
