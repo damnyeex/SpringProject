@@ -3,7 +3,7 @@ package org.example.spring_project.service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.example.spring_project.lib.EnvLoader;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -14,10 +14,12 @@ import java.util.UUID;
 @Service
 public class JwtService {
 
-    private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor(
-            EnvLoader.get("JWT_SECRET").getBytes(StandardCharsets.UTF_8)
-    );
+    private final SecretKey secretKey;
     private static final long EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24h
+
+    public JwtService(@Value("${jwt.secret}") String secret) {
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 
     public String generateToken(UUID userId, String login, String role, String lastname, String firstname, String middlename, String tenantId) {
         return Jwts.builder()
@@ -30,13 +32,13 @@ public class JwtService {
                 .claim("tenantId", tenantId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
-                .signWith(SECRET_KEY)
+                .signWith(secretKey)
                 .compact();
     }
 
     public Claims verifyToken(String token) {
         return Jwts.parser()
-                .verifyWith(SECRET_KEY)
+                .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
