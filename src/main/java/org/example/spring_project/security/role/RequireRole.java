@@ -1,4 +1,4 @@
-package org.example.spring_project.security;
+package org.example.spring_project.security.role;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

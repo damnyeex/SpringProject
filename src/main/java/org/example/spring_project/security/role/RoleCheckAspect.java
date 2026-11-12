@@ -1,4 +1,4 @@
-package org.example.spring_project.security;
+package org.example.spring_project.security.role;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;

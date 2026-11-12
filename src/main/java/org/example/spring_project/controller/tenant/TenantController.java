@@ -8,7 +8,7 @@ import org.example.spring_project.mapper.ApiMapper;
 import org.example.spring_project.middleware.ResponseMiddleware;
 import org.example.spring_project.model.Tenant;
 import org.example.spring_project.repository.TenantRepository;
-import org.example.spring_project.security.RequireRole;
+import org.example.spring_project.security.role.RequireRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

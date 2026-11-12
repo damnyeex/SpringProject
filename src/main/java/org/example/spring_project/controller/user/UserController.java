@@ -8,7 +8,7 @@ import org.example.spring_project.security.PasswordFilter;
 import org.example.spring_project.middleware.ResponseMiddleware;
 import org.example.spring_project.dto.request.UserUpdateRequest;
 import jakarta.servlet.http.HttpServletRequest;
-import org.example.spring_project.security.RequireRole;
+import org.example.spring_project.security.role.RequireRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

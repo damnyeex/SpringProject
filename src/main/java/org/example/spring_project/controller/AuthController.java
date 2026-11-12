@@ -9,7 +9,7 @@ import org.example.spring_project.mapper.ApiMapper;
 import org.example.spring_project.middleware.ResponseMiddleware;
 import org.example.spring_project.model.User;
 import org.example.spring_project.repository.UserRepository;
-import org.example.spring_project.security.RequireRole;
+import org.example.spring_project.security.role.RequireRole;
 import org.example.spring_project.service.AuthService;
 import org.example.spring_project.service.JwtService;
 import org.springframework.http.HttpStatus;
