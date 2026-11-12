@@ -1,20 +1,20 @@
 package org.example.spring_project.controller.tenant;
 
+import jakarta.validation.Valid;
 import org.example.spring_project.dto.TenantDTO;
 import org.example.spring_project.dto.TenantDetailDTO;
-import org.example.spring_project.model.Tenant;
-import org.example.spring_project.model.User;
-import org.example.spring_project.repository.TenantRepository;
+import org.example.spring_project.dto.request.TenantRequest;
 import org.example.spring_project.mapper.ApiMapper;
 import org.example.spring_project.middleware.ResponseMiddleware;
-import jakarta.servlet.http.HttpServletRequest;
+import org.example.spring_project.model.Tenant;
+import org.example.spring_project.repository.TenantRepository;
+import org.example.spring_project.security.RequireRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -30,50 +30,33 @@ public class TenantController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getTenants(HttpServletRequest request) {
-        if (request.getAttribute("userId") == null) return ResponseMiddleware.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
-
-        List<Tenant> tenants = tenantRepository.findAll();
+    @RequireRole("ADMIN")
+    public ResponseEntity<?> getTenants() {
         List<TenantDTO> responseList = new ArrayList<>();
-
-        for (Tenant tenant : tenants) {
+        for (Tenant tenant : tenantRepository.findAll()) {
             int userCount = tenantRepository.getUserCount(tenant.getId());
             responseList.add(apiMapper.toTenantDTO(tenant, userCount));
         }
-
         return ResponseMiddleware.success(responseList);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getTenantById(@PathVariable String id, HttpServletRequest request) {
-        if (request.getAttribute("userId") == null) return ResponseMiddleware.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
-
+    public ResponseEntity<?> getTenantById(@PathVariable String id) {
         Tenant tenant = tenantRepository.findById(id);
         if (tenant == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "Tenant not found");
 
-        List<User> users = tenantRepository.getUsersByTenantId(id);
-
-        TenantDetailDTO detailDTO = apiMapper.toTenantDetailDTO(tenant, users);
-
+        TenantDetailDTO detailDTO = apiMapper.toTenantDetailDTO(tenant, tenantRepository.getUsersByTenantId(id));
         return ResponseMiddleware.success(detailDTO);
     }
 
     @PostMapping
-    public ResponseEntity<?> createTenant(@RequestBody Map<String, String> body, HttpServletRequest request) {
-        if (!"ADMIN".equals(request.getAttribute("role"))) {
-            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied");
-        }
-
-        String name = body.get("name");
-        if (name == null || name.trim().isEmpty()) {
-            return ResponseMiddleware.error(HttpStatus.BAD_REQUEST, "Tenant name is required");
-        }
-
-        if (tenantRepository.findByName(name.trim()) != null) {
+    @RequireRole("ADMIN")
+    public ResponseEntity<?> createTenant(@Valid @RequestBody TenantRequest request) {
+        if (tenantRepository.findByName(request.getName()) != null) {
             return ResponseMiddleware.error(HttpStatus.CONFLICT, "Tenant with this name already exists");
         }
 
-        Tenant newTenant = new Tenant(name.trim(), body.get("description"));
+        Tenant newTenant = new Tenant(request.getName(), request.getDescription());
         newTenant.setId(UUID.randomUUID().toString());
         tenantRepository.create(newTenant);
 
@@ -81,41 +64,22 @@ public class TenantController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateTenant(@PathVariable String id, @RequestBody Map<String, String> body, HttpServletRequest request) {
-        if (!"ADMIN".equals(request.getAttribute("role"))) {
-            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied");
-        }
+    @RequireRole("ADMIN")
+    public ResponseEntity<?> updateTenant(@PathVariable String id, @Valid @RequestBody TenantRequest request) {
+        Tenant existingTenant = tenantRepository.findById(id);
+        if (existingTenant == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "Tenant not found");
 
-        Tenant existing = tenantRepository.findById(id);
-        if (existing == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "Tenant not found");
+        existingTenant.setName(request.getName());
+        existingTenant.setDescription(request.getDescription());
+        tenantRepository.update(existingTenant);
 
-        String name = body.get("name");
-        String description = body.get("description");
-
-        if (name != null && !name.trim().isEmpty()) {
-            Tenant byName = tenantRepository.findByName(name.trim());
-            if (byName != null && !byName.getId().equals(id)) {
-                return ResponseMiddleware.error(HttpStatus.CONFLICT, "Tenant with this name already exists");
-            }
-            existing.setName(name.trim());
-        }
-
-        if (description != null) existing.setDescription(description);
-
-        tenantRepository.update(existing);
-        int userCount = tenantRepository.getUserCount(id);
-        return ResponseMiddleware.successMessage("Tenant updated successfully", apiMapper.toTenantDTO(existing, userCount));
+        return ResponseMiddleware.successMessage("Tenant updated successfully", apiMapper.toTenantDTO(existingTenant, tenantRepository.getUserCount(id)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTenant(@PathVariable String id, HttpServletRequest request) {
-        if (!"ADMIN".equals(request.getAttribute("role"))) {
-            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied: Only administrators can delete tenants");
-        }
-
-        Tenant tenant = tenantRepository.findById(id);
-        if (tenant == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "Tenant not found");
-
+    @RequireRole("ADMIN")
+    public ResponseEntity<?> deleteTenant(@PathVariable String id) {
+        if (tenantRepository.findById(id) == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "Tenant not found");
         tenantRepository.delete(id);
         return ResponseMiddleware.successMessage("Tenant deleted successfully", null);
     }

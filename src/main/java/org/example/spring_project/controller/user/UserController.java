@@ -1,17 +1,19 @@
 package org.example.spring_project.controller.user;
 
+import jakarta.validation.Valid;
 import org.example.spring_project.model.User;
 import org.example.spring_project.repository.UserRepository;
 import org.example.spring_project.mapper.ApiMapper;
 import org.example.spring_project.security.PasswordFilter;
 import org.example.spring_project.middleware.ResponseMiddleware;
+import org.example.spring_project.dto.request.UserUpdateRequest;
 import jakarta.servlet.http.HttpServletRequest;
+import org.example.spring_project.security.RequireRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -46,18 +48,11 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> getUserById(@PathVariable UUID id, HttpServletRequest request) {
         String userIdAttr = (String) request.getAttribute("userId");
         String userRole = (String) request.getAttribute("role");
 
-        UUID targetUserId;
-        try {
-            targetUserId = UUID.fromString(id);
-        } catch (IllegalArgumentException e) {
-            return ResponseMiddleware.error(HttpStatus.BAD_REQUEST, "Invalid user ID format");
-        }
-
-        User user = userRepository.findById(targetUserId);
+        User user = userRepository.findById(id);
         if (user == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "User not found");
 
         if (!"ADMIN".equals(userRole) && !userIdAttr.equals(user.getId())) {
@@ -68,45 +63,34 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody Map<String, Object> body, HttpServletRequest request) {
-        String userIdAttr = (String) request.getAttribute("userId");
-        String userRole = (String) request.getAttribute("role");
+    public ResponseEntity<?> updateUser(
+            @PathVariable UUID id,
+            @Valid @RequestBody UserUpdateRequest request,
+            HttpServletRequest httpRequest) {
 
-        UUID targetUserId = UUID.fromString(id);
-        if (!"ADMIN".equals(userRole) && !userIdAttr.equals(targetUserId.toString())) {
+        String userIdAttr = (String) httpRequest.getAttribute("userId");
+        String userRole = (String) httpRequest.getAttribute("role");
+
+        if (!"ADMIN".equals(userRole) && !userIdAttr.equals(id.toString())) {
             return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied: You can only update your own profile");
         }
 
-        User existingUser = userRepository.findById(targetUserId);
+        User existingUser = userRepository.findById(id);
         if (existingUser == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "User not found");
 
-        String newLogin = (String) body.get("login");
-        String newPassword = (String) body.get("password");
-        String newLastname = (String) body.get("lastname");
-        String newFirstname = (String) body.get("firstname");
-        String newMiddlename = (String) body.get("middlename");
-        String newRole = (String) body.get("role");
-        String newTenantId = (String) body.get("tenantId");
+        if (request.getLogin() != null && !request.getLogin().trim().isEmpty()) existingUser.setLogin(request.getLogin());
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) existingUser.setPassword(PasswordFilter.hash(request.getPassword()));
+        if (request.getLastname() != null && !request.getLastname().trim().isEmpty()) existingUser.setLastname(request.getLastname());
+        if (request.getFirstname() != null && !request.getFirstname().trim().isEmpty()) existingUser.setFirstname(request.getFirstname());
+        if (request.getMiddlename() != null && !request.getMiddlename().trim().isEmpty()) existingUser.setMiddlename(request.getMiddlename());
 
-        if (!"ADMIN".equals(userRole)) {
-            newRole = existingUser.getRole();
-            newTenantId = existingUser.getTenantId();
-        }
-
-        if (newLogin != null && !newLogin.trim().isEmpty()) existingUser.setLogin(newLogin);
-        if (newPassword != null && !newPassword.trim().isEmpty()) existingUser.setPassword(PasswordFilter.hash(newPassword));
-        if (newLastname != null && !newLastname.trim().isEmpty()) existingUser.setLastname(newLastname);
-        if (newFirstname != null && !newFirstname.trim().isEmpty()) existingUser.setFirstname(newFirstname);
-        if (newMiddlename != null && !newMiddlename.trim().isEmpty()) existingUser.setMiddlename(newMiddlename);
-
-        if (newRole != null && !newRole.trim().isEmpty()) {
-            if (!"ADMIN".equals(newRole) && !"USER".equals(newRole)) {
-                return ResponseMiddleware.error(HttpStatus.BAD_REQUEST, "Invalid role");
+        if ("ADMIN".equals(userRole)) {
+            if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
+                existingUser.setRole(request.getRole());
             }
-            existingUser.setRole(newRole);
-        }
-        if (newTenantId != null) {
-            existingUser.setTenantId(newTenantId.isEmpty() ? null : newTenantId);
+            if (request.getTenantId() != null) {
+                existingUser.setTenantId(request.getTenantId().isEmpty() ? null : request.getTenantId());
+            }
         }
 
         userRepository.update(existingUser);
@@ -114,23 +98,20 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable String id, HttpServletRequest request) {
+    @RequireRole("ADMIN")
+    public ResponseEntity<?> deleteUser(@PathVariable UUID id, HttpServletRequest request) {
         String userIdAttr = (String) request.getAttribute("userId");
-        String userRole = (String) request.getAttribute("role");
 
-        if (!"ADMIN".equals(userRole)) {
-            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied: Only administrators can delete users");
-        }
-
-        if (userIdAttr.equals(id)) {
+        if (userIdAttr.equals(id.toString())) {
             return ResponseMiddleware.error(HttpStatus.BAD_REQUEST, "You cannot delete your own account");
         }
 
-        User user = userRepository.findById(UUID.fromString(id));
+        User user = userRepository.findById(id);
         if (user == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "User not found");
 
-        userRepository.delete(UUID.fromString(id)); // Теперь метод существует
+        userRepository.delete(id);
 
         return ResponseMiddleware.successMessage("User deleted successfully", null);
     }
 }
+

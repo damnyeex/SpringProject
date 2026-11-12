@@ -1,5 +1,10 @@
 package org.example.spring_project.dto;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
 public class UserDTO {
     private String id;
     private String login;
@@ -8,20 +13,4 @@ public class UserDTO {
     private String lastname;
     private String middlename;
     private String tenantId;
-
-    // Геттеры и сеттеры
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    public String getLogin() { return login; }
-    public void setLogin(String login) { this.login = login; }
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
-    public String getFirstname() { return firstname; }
-    public void setFirstname(String firstname) { this.firstname = firstname; }
-    public String getLastname() { return lastname; }
-    public void setLastname(String lastname) { this.lastname = lastname; }
-    public String getMiddlename() { return middlename; }
-    public void setMiddlename(String middlename) { this.middlename = middlename; }
-    public String getTenantId() { return tenantId; }
-    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
 }

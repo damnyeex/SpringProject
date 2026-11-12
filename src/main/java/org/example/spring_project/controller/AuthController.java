@@ -3,15 +3,18 @@ package org.example.spring_project.controller;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import org.example.spring_project.dto.request.RegisterRequest;
 import org.example.spring_project.mapper.ApiMapper;
+import org.example.spring_project.middleware.ResponseMiddleware;
 import org.example.spring_project.model.User;
 import org.example.spring_project.repository.UserRepository;
+import org.example.spring_project.security.RequireRole;
 import org.example.spring_project.service.AuthService;
 import org.example.spring_project.service.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.example.spring_project.middleware.ResponseMiddleware;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -50,7 +53,6 @@ public class AuthController {
             res.put("role", user.getRole());
             res.put("token", token);
             return ResponseEntity.ok(res);
-
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "error", "Invalid credentials"));
         }
@@ -66,32 +68,21 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @RequireRole("ADMIN")
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, String> requestBody) {
-        String login = requestBody.get("login");
-        String password = requestBody.get("password");
-        String role = requestBody.get("role");
-        String lastname = requestBody.get("lastname");
-        String firstname = requestBody.get("firstname");
-        String middlename = requestBody.get("middlename");
-        String tenantId = requestBody.get("tenantId");
-
-        if (login == null || login.trim().isEmpty() || password == null || password.trim().isEmpty()) {
-            return ResponseMiddleware.error(HttpStatus.BAD_REQUEST, "Login and password are required");
-        }
-
-        if (userRepository.findByLogin(login) != null) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+        if (userRepository.findByLogin(request.getLogin()) != null) {
             return ResponseMiddleware.error(HttpStatus.CONFLICT, "User with this login already exists");
         }
 
-        String finalRole = (role == null || role.trim().isEmpty()) ? "USER" : role;
-        if (!"ADMIN".equals(finalRole) && !"USER".equals(finalRole)) {
-            return ResponseMiddleware.error(HttpStatus.BAD_REQUEST, "Invalid role. Allowed: ADMIN, USER");
-        }
+        String finalRole = (request.getRole() == null || request.getRole().trim().isEmpty()) ? "USER" : request.getRole();
 
-        User newUser = new User(login, password, finalRole, tenantId, lastname, firstname, middlename);
+        User newUser = new User(
+                request.getLogin(), request.getPassword(), finalRole, request.getTenantId(),
+                request.getLastname(), request.getFirstname(), request.getMiddlename()
+        );
         newUser.setId(UUID.randomUUID().toString());
-        userRepository.create(newUser, password);
+        userRepository.create(newUser, request.getPassword());
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
