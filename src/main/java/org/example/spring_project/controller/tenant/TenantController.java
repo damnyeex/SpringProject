@@ -30,7 +30,6 @@ public class TenantController {
     }
 
     @GetMapping
-    @RequireRole("ADMIN")
     public ResponseEntity<?> getTenants() {
         List<TenantDTO> responseList = new ArrayList<>();
         for (Tenant tenant : tenantRepository.findAll()) {

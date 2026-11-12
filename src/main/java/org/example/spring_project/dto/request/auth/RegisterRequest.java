@@ -1,4 +1,4 @@
-package org.example.spring_project.dto.request;
+package org.example.spring_project.dto.request.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

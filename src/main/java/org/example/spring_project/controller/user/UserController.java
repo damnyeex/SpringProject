@@ -55,8 +55,16 @@ public class UserController {
         User user = userRepository.findById(id);
         if (user == null) return ResponseMiddleware.error(HttpStatus.NOT_FOUND, "User not found");
 
-        if (!"ADMIN".equals(userRole) && !userIdAttr.equals(user.getId())) {
-            return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied: You can only view your own profile");
+        if (!"ADMIN".equals(userRole)) {
+            User currentUser = userRepository.findById(UUID.fromString(userIdAttr));
+            boolean isSelf = userIdAttr.equals(user.getId());
+            boolean isSameTenant = currentUser != null
+                    && currentUser.getTenantId() != null
+                    && currentUser.getTenantId().equals(user.getTenantId());
+
+            if (!isSelf && !isSameTenant) {
+                return ResponseMiddleware.error(HttpStatus.FORBIDDEN, "Access denied: You can only view profiles in your department");
+            }
         }
 
         return ResponseMiddleware.success(apiMapper.toUserDTO(user));

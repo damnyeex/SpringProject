@@ -4,7 +4,8 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import org.example.spring_project.dto.request.RegisterRequest;
+import org.example.spring_project.dto.request.auth.LoginRequest;
+import org.example.spring_project.dto.request.auth.RegisterRequest;
 import org.example.spring_project.mapper.ApiMapper;
 import org.example.spring_project.middleware.ResponseMiddleware;
 import org.example.spring_project.model.User;
@@ -37,10 +38,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> requestBody, HttpServletResponse response) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         try {
-            String token = authService.login(requestBody.get("login"), requestBody.get("password"));
-            User user = userRepository.findByLogin(requestBody.get("login"));
+
+            String token = authService.login(request.getLogin(), request.getPassword());
+
+            User user = userRepository.findByLogin(request.getLogin());
 
             Cookie cookie = new Cookie("token", token);
             cookie.setHttpOnly(true);
@@ -52,9 +55,12 @@ public class AuthController {
             res.put("success", true);
             res.put("role", user.getRole());
             res.put("token", token);
+
             return ResponseEntity.ok(res);
+
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "error", "Invalid credentials"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "error", "Invalid credentials"));
         }
     }
 

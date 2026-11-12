@@ -19,7 +19,7 @@ public class JwtService {
     );
     private static final long EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24h
 
-    public static String generateToken(UUID userId, String login, String role, String lastname, String firstname, String middlename, String tenantId) {
+    public String generateToken(UUID userId, String login, String role, String lastname, String firstname, String middlename, String tenantId) {
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("login", login)
@@ -34,7 +34,7 @@ public class JwtService {
                 .compact();
     }
 
-    public static Claims verifyToken(String token) {
+    public Claims verifyToken(String token) {
         return Jwts.parser()
                 .verifyWith(SECRET_KEY)
                 .build()
