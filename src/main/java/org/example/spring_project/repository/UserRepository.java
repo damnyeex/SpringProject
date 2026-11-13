@@ -14,16 +14,14 @@ public class UserRepository {
 
     private final JdbcClient jdbcClient;
 
-    // Внедрение зависимости через конструктор (SOLID)
     public UserRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
     }
 
-    // Аналог твоего mapUser
     private static final RowMapper<User> USER_ROW_MAPPER = (rs, rowNum) -> {
         User u = new User(
                 rs.getString("login"),
-                null, // пароль не возвращаем
+                null,
                 rs.getString("role"),
                 rs.getString("tenant_id"),
                 rs.getString("lastname"),

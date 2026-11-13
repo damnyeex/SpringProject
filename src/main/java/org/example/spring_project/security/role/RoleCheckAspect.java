@@ -23,7 +23,6 @@ public class RoleCheckAspect {
         HttpServletRequest request = attributes.getRequest();
         String userRole = (String) request.getAttribute("role");
 
-        // Проверяем, входит ли роль в список разрешенных
         if (userRole == null || !Arrays.asList(requireRole.value()).contains(userRole)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Insufficient rights");
         }
