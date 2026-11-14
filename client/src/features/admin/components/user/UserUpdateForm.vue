@@ -118,8 +118,22 @@ const loadUserData = () => {
 };
 
 const handleUpdateSubmit = async () => {
+    const password = form.value.password?.trim() || "";
+
+    if (password !== "" && password.length < 5) {
+        alert(
+            "Пароль должен содержать минимум 5 символов (или оставьте поле пустым, чтобы не менять)",
+        );
+        return;
+    }
+
     if (!form.value.tenantId) {
-        errorMessage.value = "Пожалуйста, выберите отдел для пользователя";
+        alert("Пожалуйста, выберите отдел для пользователя");
+        return;
+    }
+
+    if (!form.value.login?.trim()) {
+        alert("Логин не может быть пустым");
         return;
     }
 
@@ -137,8 +151,8 @@ const handleUpdateSubmit = async () => {
             middlename: form.value.middlename || "",
         };
 
-        if (form.value.password && form.value.password.trim() !== "") {
-            updateData.password = form.value.password;
+        if (password !== "") {
+            updateData.password = password;
         }
 
         const response = await updateUser(props.userId, updateData);
@@ -153,7 +167,19 @@ const handleUpdateSubmit = async () => {
                 response.error || "Ошибка обновления пользователя";
         }
     } catch (error) {
-        errorMessage.value = error.response?.data?.error || "Ошибка сервера";
+        const serverError = error.response?.data;
+
+        if (serverError?.error) {
+            errorMessage.value = serverError.error;
+        } else if (serverError?.errors && Array.isArray(serverError.errors)) {
+            const messages = serverError.errors
+                .map((e) => e.defaultMessage)
+                .join("; ");
+            errorMessage.value = messages;
+        } else {
+            errorMessage.value = "Ошибка сервера. Попробуйте позже.";
+        }
+        alert(errorMessage.value);
     } finally {
         isLoading.value = false;
     }
